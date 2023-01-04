@@ -1,0 +1,62 @@
+schemaVersion: 2.0
+timeout: 150
+
+pipelines:
+  - branchRules:
+      includePatterns:
+        - ^25.0.x-acs
+        - ^dev
+    machine:
+      baseImage: docker.apple.com/atul_mohan2/druid-jdk-builder-user:0.0.4
+    build:
+      template: freestyle:v4:prb
+      steps:
+        - chown -R druiduser ./
+        - su druiduser -c 'mvn -B clean install -ff -pl "!benchmarks, !distribution, !extensions-core/kafka-extraction-namespace"'
+        - wget https://packages.confluent.io/maven/io/confluent/kafka-schema-registry-client/6.0.1/kafka-schema-registry-client-6.0.1.jar
+        - su druiduser -c 'mvn -B install:install-file -DgroupId=io.confluent -DartifactId=kafka-schema-registry-client -Dversion=6.0.1 -Dpackaging=jar -Dfile=kafka-schema-registry-client-6.0.1.jar'
+        - su druiduser -c 'mvn -B clean install -ff -pl "benchmarks"'
+        - su druiduser -c 'mvn -B clean install -DskipTests -pl extensions-core/kafka-extraction-namespace'
+        - su druiduser -c 'mvn -B clean install -Pdist -pl distribution'
+        - chown -R root .
+
+  - branchName: 25.0.x-acs
+    machine:
+      env:
+        APP_VERSION: '25.0.0-#{}'
+      baseImage: docker.apple.com/r_gidwani/druid-jdk-builder:0.0.4
+    build:
+      template: freestyle:v4:publish
+      steps:
+        - mvn clean install -Pdist -Pbundle-contrib-exts -DskipTests -Djava.net.useSystemProxies=true
+        - mvn versions:set -DnewVersion="${APP_VERSION}"
+        - git clean -f -d && git add -A && git commit -m "Bump the pom version [skip ci]"
+    package:
+      dockerfile:
+        - dockerfilePath: Dockerfile
+          version: ${APP_VERSION}
+          perApplication: false
+          publish:
+            - repo: docker.apple.com/acs-druid/druid-core
+    finally:
+      tag:
+        expression: ${APP_VERSION}
+      merge:
+        target: 25.0.x-acs
+
+  - branchName: dev
+    machine:
+      env:
+        APP_VERSION: dev-${GIT_COMMIT_SHORT}
+      baseImage: docker.apple.com/r_gidwani/druid-jdk-builder:0.0.4
+    build:
+      template: freestyle:v4:publish
+      steps:
+        - mvn clean install -Pdist -DskipTests -Djava.net.useSystemProxies=true
+    package:
+      dockerfile:
+        - dockerfilePath: Dockerfile
+          version: ${APP_VERSION}
+          perApplication: false
+          publish:
+            - repo: docker.apple.com/acs-druid/druid-core
