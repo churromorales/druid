@@ -109,7 +109,8 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
   protected Job buildJob(
       K8sTaskId k8sTaskId,
       Map<String, String> labels,
-      Map<String, String> annotations, PodTemplateSpec podTemplate
+      Map<String, String> annotations,
+      PodTemplateSpec podTemplate
   )
   {
     return new JobBuilder()
@@ -211,11 +212,7 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
     // prepend the startup task.json extraction command
     List<String> mainCommand = Lists.newArrayList("sh", "-c");
     // update the command
-    List<Container> containers = podSpec.getContainers();
-    Container mainContainer = Iterables.getFirst(containers, null);
-    if (mainContainer == null) {
-      throw new IllegalArgumentException("Must have at least one container");
-    }
+    Container mainContainer = getPrimaryContainer(podSpec);
 
     // remove probes
     mainContainer.setReadinessProbe(null);
@@ -273,6 +270,27 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
     podTemplate.setMetadata(objectMeta);
     podTemplate.setSpec(podSpec);
     return podTemplate;
+  }
+
+  protected Container getPrimaryContainer(PodSpec podSpec)
+  {
+    List<Container> containers = podSpec.getContainers();
+    Container mainContainer = null;
+    if (StringUtils.isNotBlank(config.primaryContainerName)) {
+      // find the main container
+      for (Container container : containers) {
+        if (config.primaryContainerName.equals(container.getName())) {
+          mainContainer = container;
+          break;
+        }
+      }
+    } else {
+      mainContainer = Iterables.getFirst(containers, null);
+    }
+    if (mainContainer == null) {
+      throw new IllegalArgumentException("Must have at least one container");
+    }
+    return mainContainer;
   }
 
 }
