@@ -38,6 +38,7 @@ import org.apache.druid.indexing.common.task.Task;
 import org.apache.druid.indexing.common.task.batch.parallel.ParallelIndexTuningConfig;
 import org.apache.druid.java.util.common.HumanReadableBytes;
 import org.apache.druid.k8s.overlord.KubernetesTaskRunnerConfig;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -160,4 +161,30 @@ class K8sTaskAdapterTest
     expected = (long) ((HumanReadableBytes.parse("512m") + HumanReadableBytes.parse("1g")) * 1.2);
     assertEquals(expected, K8sTaskAdapter.getContainerMemory(context));
   }
+
+  @Test
+  void testGettingPrimaryContainerNotExists()
+  {
+    TestKubernetesClient testClient = new TestKubernetesClient(client);
+    KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
+    config.namespace = "test";
+    config.primaryContainerName = "foo";
+    K8sTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
+
+    Assertions.assertThrows(IllegalArgumentException.class, () -> {
+      adapter.getPrimaryContainer(K8sTestUtils.getDummyPodSpec());
+    });
+  }
+
+  @Test
+  void testGettingPrimaryContainerExists()
+  {
+    TestKubernetesClient testClient = new TestKubernetesClient(client);
+    KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
+    config.namespace = "test";
+    config.primaryContainerName = "pi";
+    K8sTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
+    Assertions.assertNotNull(adapter.getPrimaryContainer(K8sTestUtils.getDummyPodSpec()));
+  }
+
 }
