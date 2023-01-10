@@ -21,28 +21,6 @@ spec:
       hostname: "id"
       containers:
         - args:
-            - "/kubexit/kubexit /bin/sh -c \"/bin/sidekick -loggingEnabled=true -platform=platform\
-          \ -splunkCluster=cluster -splunkIndexName=druid -splunkSourceType=json -splunkWorkingDir=/opt/splunkforwarder\
-          \ -dataCenter=dc -environment=env -application=druid -instance=instance\
-          \ -logFiles=/logs/druid/*.log\" || true"
-          command:
-            - "/bin/sh"
-            - "-c"
-          env:
-            - name: "KUBEXIT_NAME"
-              value: "sidecar"
-            - name: "KUBEXIT_GRAVEYARD"
-              value: "/graveyard"
-            - name: "KUBEXIT_DEATH_DEPS"
-              value: "main"
-          image: "two"
-          name: "sidecar"
-          volumeMounts:
-            - mountPath: "/graveyard"
-              name: "graveyard"
-            - mountPath: "/kubexit"
-              name: "kubexit"
-        - args:
             - "/kubexit/kubexit /bin/sh -c \"/peon.sh /druid/data/baseTaskDir/noop_2022-09-26T22:08:00.582Z_352988d2-5ff7-4b70-977c-3de96f9bfca6 1\""
           command:
             - "/bin/sh"
@@ -83,6 +61,28 @@ spec:
             requests:
               cpu: "1000m"
               memory: "2400000000"
+          volumeMounts:
+            - mountPath: "/graveyard"
+              name: "graveyard"
+            - mountPath: "/kubexit"
+              name: "kubexit"
+        - args:
+            - "/kubexit/kubexit /bin/sh -c \"/bin/sidekick -loggingEnabled=true -platform=platform\
+          \ -splunkCluster=cluster -splunkIndexName=druid -splunkSourceType=json -splunkWorkingDir=/opt/splunkforwarder\
+          \ -dataCenter=dc -environment=env -application=druid -instance=instance\
+          \ -logFiles=/logs/druid/*.log\" || true"
+          command:
+            - "/bin/sh"
+            - "-c"
+          env:
+            - name: "KUBEXIT_NAME"
+              value: "sidecar"
+            - name: "KUBEXIT_GRAVEYARD"
+              value: "/graveyard"
+            - name: "KUBEXIT_DEATH_DEPS"
+              value: "main"
+          image: "two"
+          name: "sidecar"
           volumeMounts:
             - mountPath: "/graveyard"
               name: "graveyard"

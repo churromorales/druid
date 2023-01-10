@@ -88,13 +88,18 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
   {
     String myPodName = System.getenv("HOSTNAME");
     Pod pod = client.executeRequest(client -> client.pods().inNamespace(config.namespace).withName(myPodName).get());
-    return createJobFromPodSpec(pod.getSpec(), task, context);
+    PodSpec podSpec = pod.getSpec();
+    massageSpec(config, podSpec);
+    return createJobFromPodSpec(podSpec, task, context);
   }
 
   @Override
   public Task toTask(Pod from) throws IOException
   {
-    List<EnvVar> envVars = from.getSpec().getContainers().get(0).getEnv();
+    // all i have to do here is grab the main container...done
+    PodSpec podSpec = from.getSpec();
+    massageSpec(config, podSpec);
+    List<EnvVar> envVars = podSpec.getContainers().get(0).getEnv();
     Optional<EnvVar> taskJson = envVars.stream().filter(x -> "TASK_JSON".equals(x.getName())).findFirst();
     String contents = taskJson.map(envVar -> taskJson.get().getValue()).orElse(null);
     if (contents == null) {
@@ -104,7 +109,7 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
   }
 
   @VisibleForTesting
-  public abstract Job createJobFromPodSpec(PodSpec podSpec, Task task, PeonCommandContext context) throws IOException;
+  abstract Job createJobFromPodSpec(PodSpec podSpec, Task task, PeonCommandContext context) throws IOException;
 
   protected Job buildJob(
       K8sTaskId k8sTaskId,
@@ -212,7 +217,11 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
     // prepend the startup task.json extraction command
     List<String> mainCommand = Lists.newArrayList("sh", "-c");
     // update the command
-    Container mainContainer = getPrimaryContainer(podSpec);
+    List<Container> containers = podSpec.getContainers();
+    Container mainContainer = Iterables.getFirst(containers, null);
+    if (mainContainer == null) {
+      throw new IllegalArgumentException("Must have at least one container");
+    }
 
     // remove probes
     mainContainer.setReadinessProbe(null);
@@ -272,25 +281,27 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
     return podTemplate;
   }
 
-  protected Container getPrimaryContainer(PodSpec podSpec)
+  @VisibleForTesting
+  static void massageSpec(KubernetesTaskRunnerConfig config, PodSpec spec)
   {
-    List<Container> containers = podSpec.getContainers();
-    Container mainContainer = null;
-    if (StringUtils.isNotBlank(config.primaryContainerName)) {
-      // find the main container
-      for (Container container : containers) {
-        if (config.primaryContainerName.equals(container.getName())) {
-          mainContainer = container;
+    spec.getContainers().removeIf(candidate -> config.containersToExclude.contains(candidate.getName()));
+    // find the primary container and make it first,
+    if (org.apache.commons.lang.StringUtils.isNotBlank(config.primaryContainerName)) {
+      int i = 0;
+      while (i < spec.getContainers().size()) {
+        if (config.primaryContainerName.equals(spec.getContainers().get(i).getName())) {
           break;
         }
+        i++;
       }
-    } else {
-      mainContainer = Iterables.getFirst(containers, null);
+      // if the primaryContainer is not found, assume the primary container is the first container.
+      if (i >= spec.getContainers().size()) {
+        i = 0;
+      }
+      Container primary = spec.getContainers().get(i);
+      spec.getContainers().remove(i);
+      spec.getContainers().add(0, primary);
     }
-    if (mainContainer == null) {
-      throw new IllegalArgumentException("Must have at least one container");
-    }
-    return mainContainer;
   }
 
 }
