@@ -114,7 +114,7 @@ public class MultiContainerTaskAdapter extends K8sTaskAdapter
     container.setArgs(Collections.singletonList(toExecute));
   }
 
-  void addSideCarTerminationSupport(PodTemplateSpec spec)
+  static void addSideCarTerminationSupport(PodTemplateSpec spec)
   {
     Volume graveyard = new VolumeBuilder().withName("graveyard")
                                           .withNewEmptyDir()
@@ -134,13 +134,14 @@ public class MultiContainerTaskAdapter extends K8sTaskAdapter
 
     // get the main container
     List<Container> containers = spec.getSpec().getContainers();
-    for (Container container : containers) {
+    for (int i = 0; i < containers.size(); i++) {
+      Container container = containers.get(i);
       container.getEnv().add(new EnvVar("KUBEXIT_NAME", container.getName(), null));
       container.getEnv().add(new EnvVar("KUBEXIT_GRAVEYARD", "/graveyard", null));
       container.getVolumeMounts().add(gMount);
       container.getVolumeMounts().add(kMount);
-      if (!"main".equals(container.getName())) {
-        container.getEnv().add(new EnvVar("KUBEXIT_DEATH_DEPS", "main", null));
+      if (i > 0) {
+        container.getEnv().add(new EnvVar("KUBEXIT_DEATH_DEPS", containers.get(0).getName(), null));
         reJiggerArgsAndCommand(container, false);
       } else {
         reJiggerArgsAndCommand(container, true);
