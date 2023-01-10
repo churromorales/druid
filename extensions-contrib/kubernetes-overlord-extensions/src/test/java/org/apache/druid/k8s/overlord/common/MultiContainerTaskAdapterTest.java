@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodSpec;
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
@@ -114,8 +115,10 @@ class MultiContainerTaskAdapterTest
     config.primaryContainerName = "primary";
     MultiContainerTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
     NoopTask task = NoopTask.create("id", 1);
+    PodSpec spec = pod.getSpec();
+    K8sTaskAdapter.massageSpec(config, spec);
     Job actual = adapter.createJobFromPodSpec(
-            pod.getSpec(),
+            spec,
             task,
             new PeonCommandContext(Collections.singletonList("/peon.sh /druid/data/baseTaskDir/noop_2022-09-26T22:08:00.582Z_352988d2-5ff7-4b70-977c-3de96f9bfca6 1"),
                     new ArrayList<>(),
