@@ -151,4 +151,51 @@ class MultiContainerTaskAdapterTest
     Assertions.assertEquals(expected, actual);
   }
 
+  @Test
+  public void testMultiContainerOverride() throws IOException
+  {
+    TestKubernetesClient testClient = new TestKubernetesClient(client);
+    Pod pod = client.pods().load(this.getClass().getClassLoader().getResourceAsStream("envOverridePodSpec.yaml")).get();
+    KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
+    config.namespace = "test";
+    config.primaryContainerName = "primary";
+    config.peonOverrides.put("druid_monitoring_monitors", "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'");
+    MultiContainerTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
+    NoopTask task = NoopTask.create("id", 1);
+    PodSpec spec = pod.getSpec();
+    K8sTaskAdapter.massageSpec(config, spec);
+    Job actual = adapter.createJobFromPodSpec(
+        spec,
+        task,
+        new PeonCommandContext(Collections.singletonList("/peon.sh /druid/data/baseTaskDir/noop_2022-09-26T22:08:00.582Z_352988d2-5ff7-4b70-977c-3de96f9bfca6 1"),
+                               new ArrayList<>(),
+                               new File("/tmp")
+        )
+    );
+    Job expected = client.batch()
+                         .v1()
+                         .jobs()
+                         .load(this.getClass().getClassLoader().getResourceAsStream("expectedEnvOverridePodSpec.yaml"))
+                         .get();
+
+    // something is up with jdk 17, where if you compress with jdk < 17 and try and decompress you get different results,
+    // this would never happen in real life, but for the jdk 17 tests this is a problem
+    // could be related to: https://bugs.openjdk.org/browse/JDK-8081450
+    actual.getSpec()
+          .getTemplate()
+          .getSpec()
+          .getContainers()
+          .get(0)
+          .getEnv()
+          .removeIf(x -> x.getName().equals("TASK_JSON"));
+    expected.getSpec()
+            .getTemplate()
+            .getSpec()
+            .getContainers()
+            .get(0)
+            .getEnv()
+            .removeIf(x -> x.getName().equals("TASK_JSON"));
+    Assertions.assertEquals(expected, actual);
+  }
+
 }

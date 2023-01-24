@@ -97,6 +97,13 @@ public class KubernetesTaskRunnerConfig
 
   @JsonProperty
   @NotNull
+  // any properties you wish to add/override for the peon task,
+  // since the peon inherits the properties from the overlord, you might wish to
+  // override the list of metrics monitors for example.
+  public Map<String, String> peonOverrides = new HashMap<>();
+
+  @JsonProperty
+  @NotNull
   public String classpath = System.getProperty("java.class.path");
 
   @JsonProperty

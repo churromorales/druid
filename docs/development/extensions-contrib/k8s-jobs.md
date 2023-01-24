@@ -68,6 +68,7 @@ Additional Configuration
 |`druid.indexer.runner.labels`|`JsonObject`|Additional labels you want to add to peon pod|`{}`|No|
 |`druid.indexer.runner.annotations`|`JsonObject`|Additional annotations you want to add to peon pod|`{}`|No|
 |`druid.indexer.runner.graceTerminationPeriodSeconds`|`Long`|Number of seconds you want to wait after a sigterm for container lifecycle hooks to complete.  Keep at a smaller value if you want tasks to hold locks for shorter periods.|`PT30S` (K8s default)|No|
+|`druid.indexer.runner.peonOverrides`|`JsonObject`|Any configuration properties you wish to override.  Because we inherit from the overlord, there might be some properties you wish to have different than what the overlord has defined `eg: druid_monitoring_monitors`|`{}`|No|
 
 ### Gotchas
 
