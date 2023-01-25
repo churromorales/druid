@@ -181,7 +181,7 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
   {
     for (EnvVar envVar : mainContainer.getEnv()) {
       if (config.peonOverrides.containsKey(envVar.getName())) {
-        envVar.setValue(config.peonOverrides.get(envVar.getName()));
+        envVar.setValue(config.peonOverrides.get(envVar.getName()).toString());
       }
     }
 
