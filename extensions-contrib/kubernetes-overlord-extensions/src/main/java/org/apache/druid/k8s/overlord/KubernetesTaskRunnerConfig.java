@@ -24,7 +24,6 @@ import com.google.common.collect.Lists;
 import org.joda.time.Period;
 
 import javax.validation.constraints.NotNull;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
