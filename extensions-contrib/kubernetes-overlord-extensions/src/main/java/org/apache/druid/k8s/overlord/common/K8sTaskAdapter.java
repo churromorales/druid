@@ -89,7 +89,7 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
     String myPodName = System.getenv("HOSTNAME");
     Pod pod = client.executeRequest(client -> client.pods().inNamespace(config.namespace).withName(myPodName).get());
     PodSpec podSpec = pod.getSpec();
-    massageSpec(config, podSpec);
+    massageSpec(podSpec, config.primaryContainerName);
     return createJobFromPodSpec(podSpec, task, context);
   }
 
@@ -98,7 +98,7 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
   {
     // all i have to do here is grab the main container...done
     PodSpec podSpec = from.getSpec();
-    massageSpec(config, podSpec);
+    massageSpec(podSpec, "main");
     List<EnvVar> envVars = podSpec.getContainers().get(0).getEnv();
     Optional<EnvVar> taskJson = envVars.stream().filter(x -> "TASK_JSON".equals(x.getName())).findFirst();
     String contents = taskJson.map(envVar -> taskJson.get().getValue()).orElse(null);
@@ -177,13 +177,16 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
     mainContainer.setPorts(Lists.newArrayList(httpsPort, tcpPort));
   }
 
-  private void addEnvironmentVariables(Container mainContainer, PeonCommandContext context, String taskContents)
+  @VisibleForTesting
+  void addEnvironmentVariables(Container mainContainer, PeonCommandContext context, String taskContents)
   {
-    for (EnvVar envVar : mainContainer.getEnv()) {
-      if (config.peonOverrides.containsKey(envVar.getName())) {
-        log.info("Overriden value for peon " + config.peonOverrides.get(envVar.getName()).toString());
-        envVar.setValue(config.peonOverrides.get(envVar.getName()).toString());
-      }
+    // if the peon monitors are set, override the overlord's monitors (if set) with the peon monitors
+    if (StringUtils.isNotBlank(config.peonMonitors)) {
+      mainContainer.getEnv().removeIf(x -> "druid_monitoring_monitors".equals(x.getName()));
+      mainContainer.getEnv().add(new EnvVarBuilder()
+                                     .withName("druid_monitoring_monitors")
+                                     .withValue(config.peonMonitors)
+                                     .build());
     }
 
     mainContainer.getEnv().addAll(Lists.newArrayList(
@@ -289,21 +292,22 @@ public abstract class K8sTaskAdapter implements TaskAdapter<Pod, Job>
   }
 
   @VisibleForTesting
-  static void massageSpec(KubernetesTaskRunnerConfig config, PodSpec spec)
+  static void massageSpec(PodSpec spec, String primaryContainerName)
   {
-    spec.getContainers().removeIf(candidate -> config.containersToExclude.contains(candidate.getName()));
     // find the primary container and make it first,
-    if (org.apache.commons.lang.StringUtils.isNotBlank(config.primaryContainerName)) {
+    if (StringUtils.isNotBlank(primaryContainerName)) {
       int i = 0;
       while (i < spec.getContainers().size()) {
-        if (config.primaryContainerName.equals(spec.getContainers().get(i).getName())) {
+        if (primaryContainerName.equals(spec.getContainers().get(i).getName())) {
           break;
         }
         i++;
       }
       // if the primaryContainer is not found, assume the primary container is the first container.
       if (i >= spec.getContainers().size()) {
-        i = 0;
+        throw new IllegalArgumentException("Could not find container named: "
+                                           + primaryContainerName
+                                           + " in PodSpec");
       }
       Container primary = spec.getContainers().get(i);
       spec.getContainers().remove(i);

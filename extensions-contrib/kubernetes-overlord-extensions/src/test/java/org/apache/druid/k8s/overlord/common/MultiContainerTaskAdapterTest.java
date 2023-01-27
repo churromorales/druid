@@ -116,7 +116,7 @@ class MultiContainerTaskAdapterTest
     MultiContainerTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
     NoopTask task = NoopTask.create("id", 1);
     PodSpec spec = pod.getSpec();
-    K8sTaskAdapter.massageSpec(config, spec);
+    K8sTaskAdapter.massageSpec(spec, "primary");
     Job actual = adapter.createJobFromPodSpec(
             spec,
             task,
@@ -152,18 +152,18 @@ class MultiContainerTaskAdapterTest
   }
 
   @Test
-  public void testMultiContainerOverride() throws IOException
+  public void testOverridingPeonMonitors() throws IOException
   {
     TestKubernetesClient testClient = new TestKubernetesClient(client);
-    Pod pod = client.pods().load(this.getClass().getClassLoader().getResourceAsStream("envOverridePodSpec.yaml")).get();
+    Pod pod = client.pods().load(this.getClass().getClassLoader().getResourceAsStream("podSpec.yaml")).get();
     KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
     config.namespace = "test";
     config.primaryContainerName = "primary";
-    config.peonOverrides.put("druid_monitoring_monitors", "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'");
+    config.peonMonitors = "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'";
     MultiContainerTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
     NoopTask task = NoopTask.create("id", 1);
     PodSpec spec = pod.getSpec();
-    K8sTaskAdapter.massageSpec(config, spec);
+    K8sTaskAdapter.massageSpec(spec, config.primaryContainerName);
     Job actual = adapter.createJobFromPodSpec(
         spec,
         task,
@@ -175,7 +175,7 @@ class MultiContainerTaskAdapterTest
     Job expected = client.batch()
                          .v1()
                          .jobs()
-                         .load(this.getClass().getClassLoader().getResourceAsStream("expectedEnvOverridePodSpec.yaml"))
+                         .load(this.getClass().getClassLoader().getResourceAsStream("expectedPodSpec.yaml"))
                          .get();
 
     // something is up with jdk 17, where if you compress with jdk < 17 and try and decompress you get different results,

@@ -9,6 +9,9 @@ spec:
         - "3600"
       image: one
       name: primary
+      env:
+        - name: "druid_monitoring_monitors"
+          value: '["org.apache.druid.java.util.metrics.JvmMonitor", "org.apache.druid.server.metrics.TaskCountStatsMonitor"]'
     - command:
         - "tail -f /dev/null"
       image: two

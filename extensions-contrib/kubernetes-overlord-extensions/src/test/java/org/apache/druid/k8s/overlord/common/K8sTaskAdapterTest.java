@@ -26,6 +26,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
+import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.EnvVarBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
 import io.fabric8.kubernetes.api.model.PodSpec;
@@ -48,10 +50,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -173,23 +173,19 @@ class K8sTaskAdapterTest
     PodSpec spec = new PodSpec();
     List<Container> containers = new ArrayList<>();
     containers.add(new ContainerBuilder()
-                       .withName("excludeSidecar").build());
+                       .withName("secondary").build());
     containers.add(new ContainerBuilder()
                        .withName("sidecar").build());
     containers.add(new ContainerBuilder()
                        .withName("primary").build());
     spec.setContainers(containers);
-    KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
-    config.primaryContainerName = "primary";
-    Set<String> containersToExclude = new HashSet<>();
-    containersToExclude.add("excludeSidecar");
-    config.containersToExclude = containersToExclude;
-    K8sTaskAdapter.massageSpec(config, spec);
+    K8sTaskAdapter.massageSpec(spec, "primary");
 
     List<Container> actual = spec.getContainers();
-    Assertions.assertEquals(2, containers.size());
+    Assertions.assertEquals(3, containers.size());
     Assertions.assertEquals("primary", actual.get(0).getName());
-    Assertions.assertEquals("sidecar", actual.get(1).getName());
+    Assertions.assertEquals("secondary", actual.get(1).getName());
+    Assertions.assertEquals("sidecar", actual.get(2).getName());
   }
 
   @Test
@@ -204,17 +200,58 @@ class K8sTaskAdapterTest
     containers.add(new ContainerBuilder()
                        .withName("sidecar").build());
     spec.setContainers(containers);
-    KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
-    config.primaryContainerName = "primary";
-    Set<String> containersToExclude = new HashSet<>();
-    containersToExclude.add("istio-proxy");
-    config.containersToExclude = containersToExclude;
-    K8sTaskAdapter.massageSpec(config, spec);
 
-    List<Container> actual = spec.getContainers();
-    Assertions.assertEquals(2, actual.size());
-    Assertions.assertEquals("main", actual.get(0).getName());
-    Assertions.assertEquals("sidecar", actual.get(1).getName());
+
+    Assertions.assertThrows(IllegalArgumentException.class, () -> {
+      K8sTaskAdapter.massageSpec(spec, "primary");
+    });
   }
 
+  @Test
+  void testAddingMonitors() throws IOException
+  {
+    TestKubernetesClient testClient = new TestKubernetesClient(client);
+    PeonCommandContext context = new PeonCommandContext(
+        new ArrayList<>(),
+        new ArrayList<>(),
+        new File("/tmp/")
+    );
+    KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
+    config.namespace = "test";
+    K8sTaskAdapter adapter = new SingleContainerTaskAdapter(testClient, config, jsonMapper);
+    Task task = K8sTestUtils.getTask();
+    // no monitor in overlord, no monitor override
+    Container container = new ContainerBuilder()
+        .withName("container").build();
+    adapter.addEnvironmentVariables(container, context, task.toString());
+    assertFalse(container.getEnv().stream().anyMatch(x -> x.getName().equals("druid_monitoring_monitors")));
+
+    // we have an override, but nothing in the overlord
+    config.peonMonitors = "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'";
+    adapter = new SingleContainerTaskAdapter(testClient, config, jsonMapper);
+    adapter.addEnvironmentVariables(container, context, task.toString());
+    EnvVar env = container.getEnv()
+                                                .stream()
+                                                .filter(x -> x.getName().equals("druid_monitoring_monitors"))
+                                                .findFirst()
+                                                .get();
+    assertEquals(config.peonMonitors, env.getValue());
+
+    // we override what is in the overlord
+    config.peonMonitors = "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'";
+    adapter = new SingleContainerTaskAdapter(testClient, config, jsonMapper);
+    container.getEnv().add(new EnvVarBuilder()
+                               .withName("druid_monitoring_monitors")
+                               .withValue(
+                                   "'[\"org.apache.druid.java.util.metrics.JvmMonitor\", "
+                                   + "\"org.apache.druid.server.metrics.TaskCountStatsMonitor\"]'")
+             .build());
+    adapter.addEnvironmentVariables(container, context, task.toString());
+    env = container.getEnv()
+                          .stream()
+                          .filter(x -> x.getName().equals("druid_monitoring_monitors"))
+                          .findFirst()
+                          .get();
+    assertEquals(config.peonMonitors, env.getValue());
+  }
 }

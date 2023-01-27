@@ -57,7 +57,6 @@ Additional Configuration
 |`druid.indexer.runner.debugJobs`|`boolean`|Clean up K8s jobs after tasks complete.|False|No|
 |`druid.indexer.runner.sidecarSupport`|`boolean`|If your overlord pod has sidecars, this will attempt to start the task with the same sidecars as the overlord pod.|False|No|
 |`druid.indexer.runner.primaryContainerName`|`String`|If running with sidecars, the `primaryContainerName` should be that of your druid container like `druid-overlord`.|First container in `podSpec` list|No|
-|`druid.indexer.runner.containersToExclude`|`String`|Any sidecars present in the overlord you do not wish to carry to your peon pod.  For example sidecars that are automatically injected by a controller like istio-proxy. |[]|No|
 |`druid.indexer.runner.kubexitImage`|`String`|Used kubexit project to help shutdown sidecars when the main pod completes.  Otherwise jobs with sidecars never terminate.|karlkfi/kubexit:latest|No|
 |`druid.indexer.runner.disableClientProxy`|`boolean`|Use this if you have a global http(s) proxy and you wish to bypass it.|false|No|
 |`druid.indexer.runner.maxTaskDuration`|`Duration`|Max time a task is allowed to run for before getting killed|`PT4H`|No|
@@ -67,8 +66,9 @@ Additional Configuration
 |`druid.indexer.runner.javaOptsArray`|`JsonArray`|java opts for the task.|`-Xmx1g`|No|
 |`druid.indexer.runner.labels`|`JsonObject`|Additional labels you want to add to peon pod|`{}`|No|
 |`druid.indexer.runner.annotations`|`JsonObject`|Additional annotations you want to add to peon pod|`{}`|No|
+|`druid.indexer.runner.peonMonitors`|`String`|An override for the `druid.monitoring.monitors`, For the situation you have monitors setup, and do not want to inherit those from the overlord.||No|
 |`druid.indexer.runner.graceTerminationPeriodSeconds`|`Long`|Number of seconds you want to wait after a sigterm for container lifecycle hooks to complete.  Keep at a smaller value if you want tasks to hold locks for shorter periods.|`PT30S` (K8s default)|No|
-|`druid.indexer.runner.peonOverrides`|`JsonObject`|Any configuration properties you wish to override.  Because we inherit from the overlord, there might be some properties you wish to have different than what the overlord has defined `eg: druid_monitoring_monitors`|`{}`|No|
+|`druid.indexer.runner.peonOverrides`|`String`|Any configuration properties you wish to override.  Because we inherit from the overlord, there might be some properties you wish to have different than what the overlord has defined `eg: druid_monitoring_monitors`|``|No|
 
 ### Gotchas
 
