@@ -24,6 +24,8 @@ import com.google.common.collect.Lists;
 import org.joda.time.Period;
 
 import javax.validation.constraints.NotNull;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -85,7 +87,7 @@ public class KubernetesTaskRunnerConfig
   // the peon inherits the monitors from the overlord, so if someone specifies
   // a TaskCountStatsMonitor in the overlord for example, the peon process
   // fails because it can not inject this monitor in the peon process.
-  public String peonMonitors;
+  public List<String> peonMonitors = new ArrayList<>();
 
   @JsonProperty
   @NotNull

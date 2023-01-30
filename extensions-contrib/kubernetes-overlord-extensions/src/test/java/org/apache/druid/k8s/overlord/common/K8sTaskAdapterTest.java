@@ -189,7 +189,7 @@ class K8sTaskAdapterTest
   }
 
   @Test
-  void testNoPrimaryFound() throws Exception
+  void testNoPrimaryFound()
   {
     PodSpec spec = new PodSpec();
     List<Container> containers = new ArrayList<>();
@@ -227,31 +227,31 @@ class K8sTaskAdapterTest
     assertFalse(container.getEnv().stream().anyMatch(x -> x.getName().equals("druid_monitoring_monitors")));
 
     // we have an override, but nothing in the overlord
-    config.peonMonitors = "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'";
+    config.peonMonitors = jsonMapper.readValue("[\"org.apache.druid.java.util.metrics.JvmMonitor\"]", List.class);
     adapter = new SingleContainerTaskAdapter(testClient, config, jsonMapper);
     adapter.addEnvironmentVariables(container, context, task.toString());
     EnvVar env = container.getEnv()
-                                                .stream()
-                                                .filter(x -> x.getName().equals("druid_monitoring_monitors"))
-                                                .findFirst()
-                                                .get();
-    assertEquals(config.peonMonitors, env.getValue());
+                          .stream()
+                          .filter(x -> x.getName().equals("druid_monitoring_monitors"))
+                          .findFirst()
+                          .get();
+    assertEquals(jsonMapper.writeValueAsString(config.peonMonitors), env.getValue());
 
     // we override what is in the overlord
-    config.peonMonitors = "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'";
+    config.peonMonitors = jsonMapper.readValue("[\"org.apache.druid.java.util.metrics.JvmMonitor\"]", List.class);
     adapter = new SingleContainerTaskAdapter(testClient, config, jsonMapper);
     container.getEnv().add(new EnvVarBuilder()
                                .withName("druid_monitoring_monitors")
                                .withValue(
                                    "'[\"org.apache.druid.java.util.metrics.JvmMonitor\", "
                                    + "\"org.apache.druid.server.metrics.TaskCountStatsMonitor\"]'")
-             .build());
+                               .build());
     adapter.addEnvironmentVariables(container, context, task.toString());
     env = container.getEnv()
-                          .stream()
-                          .filter(x -> x.getName().equals("druid_monitoring_monitors"))
-                          .findFirst()
-                          .get();
-    assertEquals(config.peonMonitors, env.getValue());
+                   .stream()
+                   .filter(x -> x.getName().equals("druid_monitoring_monitors"))
+                   .findFirst()
+                   .get();
+    assertEquals(jsonMapper.writeValueAsString(config.peonMonitors), env.getValue());
   }
 }

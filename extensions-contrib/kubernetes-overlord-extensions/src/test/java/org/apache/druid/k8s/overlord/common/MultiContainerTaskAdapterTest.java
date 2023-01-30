@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 @EnableKubernetesMockClient(crud = true)
 class MultiContainerTaskAdapterTest
@@ -159,7 +160,7 @@ class MultiContainerTaskAdapterTest
     KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
     config.namespace = "test";
     config.primaryContainerName = "primary";
-    config.peonMonitors = "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'";
+    config.peonMonitors = jsonMapper.readValue("[\"org.apache.druid.java.util.metrics.JvmMonitor\"]", List.class);
     MultiContainerTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
     NoopTask task = NoopTask.create("id", 1);
     PodSpec spec = pod.getSpec();

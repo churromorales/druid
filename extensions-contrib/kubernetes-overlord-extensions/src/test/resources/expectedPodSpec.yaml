@@ -27,7 +27,7 @@ spec:
             - "-c"
           env:
             - name: "druid_monitoring_monitors"
-              value: "'[\"org.apache.druid.java.util.metrics.JvmMonitor\"]'"
+              value: '["org.apache.druid.java.util.metrics.JvmMonitor"]'
             - name: "TASK_DIR"
               value: "/tmp"
             - name: "TASK_JSON"
