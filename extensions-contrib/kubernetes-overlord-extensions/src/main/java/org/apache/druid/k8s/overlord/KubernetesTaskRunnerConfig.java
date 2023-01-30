@@ -24,7 +24,6 @@ import com.google.common.collect.Lists;
 import org.joda.time.Period;
 
 import javax.validation.constraints.NotNull;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -91,13 +90,6 @@ public class KubernetesTaskRunnerConfig
   @JsonProperty
   @NotNull
   public List<String> javaOptsArray;
-
-  @JsonProperty
-  @NotNull
-  // any properties you wish to add/override for the peon task,
-  // since the peon inherits the properties from the overlord, you might wish to
-  // override the list of metrics monitors for example.
-  public Map<String, Object> peonOverrides = new HashMap<>();
 
   @JsonProperty
   @NotNull
