@@ -67,7 +67,7 @@ class MultiContainerTaskAdapterTest
   public void testMultiContainerSupport() throws IOException
   {
     TestKubernetesClient testClient = new TestKubernetesClient(client);
-    Pod pod = client.pods().load(this.getClass().getClassLoader().getResourceAsStream("multiContainerPodSpec.yaml")).get();
+    Pod pod = K8sTestUtils.fileToResource("multiContainerPodSpec.yaml", Pod.class);
     KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
     config.namespace = "test";
     MultiContainerTaskAdapter adapter = new MultiContainerTaskAdapter(testClient, config, jsonMapper);
@@ -80,11 +80,7 @@ class MultiContainerTaskAdapterTest
                                new File("/tmp")
         )
     );
-    Job expected = client.batch()
-                     .v1()
-                     .jobs()
-                     .load(this.getClass().getClassLoader().getResourceAsStream("expectedMultiContainerOutput.yaml"))
-                     .get();
+    Job expected = K8sTestUtils.fileToResource("expectedMultiContainerOutput.yaml", Job.class);
 
     // something is up with jdk 17, where if you compress with jdk < 17 and try and decompress you get different results,
     // this would never happen in real life, but for the jdk 17 tests this is a problem
@@ -110,7 +106,7 @@ class MultiContainerTaskAdapterTest
   public void testMultiContainerSupportWithNamedContainer() throws IOException
   {
     TestKubernetesClient testClient = new TestKubernetesClient(client);
-    Pod pod = client.pods().load(this.getClass().getClassLoader().getResourceAsStream("multiContainerPodSpecOrder.yaml")).get();
+    Pod pod = K8sTestUtils.fileToResource("multiContainerPodSpecOrder.yaml", Pod.class);
     KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
     config.namespace = "test";
     config.primaryContainerName = "primary";
@@ -126,11 +122,7 @@ class MultiContainerTaskAdapterTest
                     new File("/tmp")
             )
     );
-    Job expected = client.batch()
-            .v1()
-            .jobs()
-            .load(this.getClass().getClassLoader().getResourceAsStream("expectedMultiContainerOutputOrder.yaml"))
-            .get();
+    Job expected = K8sTestUtils.fileToResource("expectedMultiContainerOutputOrder.yaml", Job.class);
 
     // something is up with jdk 17, where if you compress with jdk < 17 and try and decompress you get different results,
     // this would never happen in real life, but for the jdk 17 tests this is a problem
@@ -156,7 +148,7 @@ class MultiContainerTaskAdapterTest
   public void testOverridingPeonMonitors() throws IOException
   {
     TestKubernetesClient testClient = new TestKubernetesClient(client);
-    Pod pod = client.pods().load(this.getClass().getClassLoader().getResourceAsStream("podSpec.yaml")).get();
+    Pod pod = K8sTestUtils.fileToResource("podSpec.yaml", Pod.class);
     KubernetesTaskRunnerConfig config = new KubernetesTaskRunnerConfig();
     config.namespace = "test";
     config.primaryContainerName = "primary";
@@ -173,11 +165,7 @@ class MultiContainerTaskAdapterTest
                                new File("/tmp")
         )
     );
-    Job expected = client.batch()
-                         .v1()
-                         .jobs()
-                         .load(this.getClass().getClassLoader().getResourceAsStream("expectedPodSpec.yaml"))
-                         .get();
+    Job expected = K8sTestUtils.fileToResource("expectedPodSpec.yaml", Job.class);
 
     // something is up with jdk 17, where if you compress with jdk < 17 and try and decompress you get different results,
     // this would never happen in real life, but for the jdk 17 tests this is a problem
@@ -198,5 +186,6 @@ class MultiContainerTaskAdapterTest
             .removeIf(x -> x.getName().equals("TASK_JSON"));
     Assertions.assertEquals(expected, actual);
   }
+
 
 }
